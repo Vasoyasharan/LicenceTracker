@@ -1,12 +1,17 @@
 (function () {
   // ---------- State ----------
   let licenses = [];
+  let vendors = []; // NEW: Vendor directory
   let currentSection = 'All';
   let customTypes = [];
   let formspreeEndpoint = '';
   let searchQuery = '';
   let statusFilter = 'all';
   let sortMode = 'expiry-asc';
+  
+  // Calendar State
+  let currentView = 'grid'; // 'grid' or 'calendar'
+  let calDate = new Date();
 
   const DEFAULT_TYPES = [
     'AutoCAD License', 'Antivirus EPP', 'Email', 'Office Apps',
@@ -17,11 +22,22 @@
   const $ = (id) => document.getElementById(id);
   const tabsContainer = $('tabsContainer');
   const licenseGrid = $('licenseGrid');
+  const calendarContainer = $('calendarContainer');
+  const calMonthYear = $('calMonthYear');
+  const calGrid = document.querySelector('.cal-grid');
+  
+  const viewGridBtn = $('viewGridBtn');
+  const viewCalBtn = $('viewCalBtn');
+  const prevMonthBtn = $('prevMonthBtn');
+  const nextMonthBtn = $('nextMonthBtn');
+
   const modal = $('licenseModal');
   const modalTitle = $('modalTitle');
   const licenseForm = $('licenseForm');
   const licenseIdField = $('licenseId');
-  const vendorInput = $('vendorName');
+  
+  const vendorSelect = $('vendorSelect'); // New
+  const quickAddVendorBtn = $('quickAddVendorBtn'); // New
   const licenseNameInput = $('licenseName');
   const licenseTypeSelect = $('licenseType');
   const licenseDurationSelect = $('licenseDuration');
@@ -34,28 +50,46 @@
   const assignedToInput = $('assignedTo');
   const licenseQtyInput = $('licenseQty');
   const fileUrlInput = $('fileUrl');
+  
   const addLicenseBtn = $('addLicenseBtn');
   const closeModalBtn = $('closeModalBtn');
   const cancelModalBtn = $('cancelModalBtn');
   const themeToggle = $('themeToggle');
+  
+  // Vendor Modal DOM
+  const vendorBtn = $('vendorBtn');
+  const vendorModal = $('vendorModal');
+  const closeVendorBtn = $('closeVendorBtn');
+  const cancelVendorBtn = $('cancelVendorBtn');
+  const vendorForm = $('vendorForm');
+  const vendorIdField = $('vendorId');
+  const vendorNameInput = $('vendorNameInput');
+  const vendorEmailInput = $('vendorEmailInput');
+  const vendorPhoneInput = $('vendorPhoneInput');
+  const vendorList = $('vendorList');
+
+  // Settings Modal DOM
   const settingsBtn = $('settingsBtn');
   const settingsModal = $('settingsModal');
   const closeSettingsBtn = $('closeSettingsBtn');
   const cancelSettingsBtn = $('cancelSettingsBtn');
   const saveSettingsBtn = $('saveSettingsBtn');
   const formspreeInput = $('formspreeEndpoint');
+  
   const toast = $('toast');
   const toastMessage = $('toastMessage');
   const searchInput = $('searchInput');
   const searchClear = $('searchClear');
   const statusFilterSelect = $('statusFilter');
   const sortSelect = $('sortSelect');
+  
   const notifBtn = $('notifBtn');
   const notifCount = $('notifCount');
   const notifPanel = $('notifPanel');
   const notifList = $('notifList');
   const dataMenuBtn = $('dataMenuBtn');
   const dataPanel = $('dataPanel');
+  
   const exportJsonBtn = $('exportJsonBtn');
   const importJsonBtn = $('importJsonBtn');
   const exportCsvBtn = $('exportCsvBtn');
@@ -71,13 +105,14 @@
       try {
         const parsed = JSON.parse(stored);
         licenses = parsed.licenses || [];
+        vendors = parsed.vendors || [];
         customTypes = parsed.customTypes || [];
         formspreeEndpoint = parsed.formspreeEndpoint || '';
       } catch (e) { console.warn('Failed to parse stored data', e); }
     }
   }
   function saveData() {
-    localStorage.setItem('licenseTracker', JSON.stringify({ licenses, customTypes, formspreeEndpoint }));
+    localStorage.setItem('licenseTracker', JSON.stringify({ licenses, vendors, customTypes, formspreeEndpoint }));
   }
 
   // ---------- Helpers ----------
@@ -104,8 +139,7 @@
   function getTierClass(lic) {
     if (lic.duration === 'lifetime') return 'tier-life';
     const d = daysUntil(lic.expireDate);
-    if (d < 0) return 'tier-red';
-    if (d <= 5) return 'tier-red';
+    if (d < 0 || d <= 5) return 'tier-red';
     if (d <= 20) return 'tier-orange';
     if (d <= 60) return 'tier-yellow';
     return 'tier-green';
@@ -140,6 +174,71 @@
     expireDateInput.value = start ? addMonths(start, parseInt(duration, 10)) : '';
   }
 
+  // ---------- VENDOR DIRECTORY ----------
+  function populateVendorSelect() {
+    if (vendors.length === 0) {
+      vendorSelect.innerHTML = `<option value="">-- No vendors yet, click "New" --</option>`;
+      return;
+    }
+    vendorSelect.innerHTML = vendors.map(v => 
+      `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)}</option>`
+    ).join('');
+  }
+
+  function renderVendors() {
+    if (vendors.length === 0) {
+      vendorList.innerHTML = `<div class="notif-empty">No vendors added yet.</div>`;
+      return;
+    }
+    vendorList.innerHTML = vendors.map(v => `
+      <div class="vendor-card">
+        <div class="vendor-info">
+          <h4>${escapeHtml(v.name)}</h4>
+          ${v.email ? `<p><i class="fas fa-envelope"></i> ${escapeHtml(v.email)}</p>` : ''}
+          ${v.phone ? `<p><i class="fas fa-phone"></i> ${escapeHtml(v.phone)}</p>` : ''}
+        </div>
+        <div class="vendor-actions">
+          <button class="icon-btn delete-vendor-btn" data-id="${v.id}" title="Delete Vendor"><i class="fas fa-trash-alt"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    document.querySelectorAll('.delete-vendor-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (confirm('Delete this vendor? Licenses using this vendor name will remain, but the contact info will be lost.')) {
+          vendors = vendors.filter(v => v.id !== btn.dataset.id);
+          saveData();
+          renderVendors();
+          populateVendorSelect();
+          showToast('Vendor deleted');
+        }
+      });
+    });
+  }
+
+  function handleVendorSubmit(e) {
+    e.preventDefault();
+    const name = vendorNameInput.value.trim();
+    const email = vendorEmailInput.value.trim();
+    const phone = vendorPhoneInput.value.trim();
+    
+    if (!name) return;
+    if (vendors.some(v => v.name.toLowerCase() === name.toLowerCase())) {
+      alert('Vendor with this name already exists!');
+      return;
+    }
+
+    const newVendor = { id: Date.now().toString(36), name, email, phone };
+    vendors.push(newVendor);
+    saveData();
+    
+    vendorForm.reset();
+    renderVendors();
+    populateVendorSelect();
+    vendorSelect.value = name; // Auto-select the new vendor
+    showToast('Vendor added successfully');
+  }
+
   // ---------- Tabs ----------
   function renderTabs() {
     const types = getAllTypes();
@@ -158,7 +257,8 @@
       tab.addEventListener('click', () => {
         currentSection = tab.dataset.section;
         renderTabs();
-        renderLicenses();
+        if (currentView === 'grid') renderLicenses();
+        else renderCalendar();
       });
     });
     $('addTypeBtn')?.addEventListener('click', () => {
@@ -237,6 +337,7 @@
       el.addEventListener('click', () => {
         notifPanel.classList.remove('open');
         const id = el.dataset.id;
+        if (currentView === 'calendar') { currentView = 'grid'; viewGridBtn.click(); }
         const card = document.querySelector(`.license-card[data-id="${id}"]`);
         if (card) {
           card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -251,7 +352,6 @@
   // ---------- Filtering & sorting ----------
   function applyFilters(list) {
     let out = list;
-
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       out = out.filter(l =>
@@ -263,7 +363,6 @@
         (l.notes || '').toLowerCase().includes(q)
       );
     }
-
     if (statusFilter !== 'all') {
       out = out.filter(l => {
         const tier = getTierLabel(l);
@@ -280,20 +379,18 @@
   function applySort(list) {
     const arr = [...list];
     switch (sortMode) {
-      case 'expiry-asc':
-        return arr.sort((a, b) => {
-          if (a.duration === 'lifetime' && b.duration !== 'lifetime') return 1;
-          if (a.duration !== 'lifetime' && b.duration === 'lifetime') return -1;
-          if (a.duration === 'lifetime' && b.duration === 'lifetime') return 0;
-          return new Date(a.expireDate) - new Date(b.expireDate);
-        });
-      case 'expiry-desc':
-        return arr.sort((a, b) => {
-          if (a.duration === 'lifetime' && b.duration !== 'lifetime') return 1;
-          if (a.duration !== 'lifetime' && b.duration === 'lifetime') return -1;
-          if (a.duration === 'lifetime' && b.duration === 'lifetime') return 0;
-          return new Date(b.expireDate) - new Date(a.expireDate);
-        });
+      case 'expiry-asc': return arr.sort((a, b) => {
+        if (a.duration === 'lifetime' && b.duration !== 'lifetime') return 1;
+        if (a.duration !== 'lifetime' && b.duration === 'lifetime') return -1;
+        if (a.duration === 'lifetime' && b.duration === 'lifetime') return 0;
+        return new Date(a.expireDate) - new Date(b.expireDate);
+      });
+      case 'expiry-desc': return arr.sort((a, b) => {
+        if (a.duration === 'lifetime' && b.duration !== 'lifetime') return 1;
+        if (a.duration !== 'lifetime' && b.duration === 'lifetime') return -1;
+        if (a.duration === 'lifetime' && b.duration === 'lifetime') return 0;
+        return new Date(b.expireDate) - new Date(a.expireDate);
+      });
       case 'vendor-asc':  return arr.sort((a, b) => (a.vendor || '').localeCompare(b.vendor || ''));
       case 'vendor-desc': return arr.sort((a, b) => (b.vendor || '').localeCompare(a.vendor || ''));
       case 'name-asc':    return arr.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -302,7 +399,7 @@
     }
   }
 
-  // ---------- Render cards ----------
+  // ---------- Render GRID ----------
   function renderLicenses() {
     let filtered = licenses;
     if (currentSection !== 'All') filtered = licenses.filter(l => l.type === currentSection);
@@ -310,15 +407,8 @@
     filtered = applySort(filtered);
 
     if (filtered.length === 0) {
-      licenseGrid.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-folder-open"></i>
-          <h3>No licenses match</h3>
-          <p>Try changing filters or add a new license.</p>
-        </div>`;
-      updateStats();
-      updateNotifications();
-      return;
+      licenseGrid.innerHTML = `<div class="empty-state"><i class="fas fa-folder-open"></i><h3>No licenses match</h3><p>Try changing filters or add a new license.</p></div>`;
+      updateStats(); updateNotifications(); return;
     }
 
     let html = '';
@@ -338,10 +428,8 @@
         badgeHtml = `<div class="${cls}">${label}</div>`;
       }
 
-      const qty = lic.qty && lic.qty > 1
-        ? `<span class="qty-badge"><i class="fas fa-boxes-stacked"></i> × ${lic.qty}</span>` : '';
-      const attach = lic.fileUrl
-        ? `<a class="attach-chip" href="${escapeHtml(lic.fileUrl)}" target="_blank" rel="noopener"><i class="fas fa-paperclip"></i> File</a>` : '';
+      const qty = lic.qty && lic.qty > 1 ? `<span class="qty-badge"><i class="fas fa-boxes-stacked"></i> × ${lic.qty}</span>` : '';
+      const attach = lic.fileUrl ? `<a class="attach-chip" href="${escapeHtml(lic.fileUrl)}" target="_blank" rel="noopener"><i class="fas fa-paperclip"></i> File</a>` : '';
 
       html += `
         <div class="license-card ${tierClass}" data-id="${lic.id}">
@@ -370,20 +458,98 @@
     });
 
     licenseGrid.innerHTML = html;
-
-    document.querySelectorAll('.edit-btn').forEach(btn =>
-      btn.addEventListener('click', () => openEditModal(btn.dataset.id)));
-    document.querySelectorAll('.delete-btn').forEach(btn =>
-      btn.addEventListener('click', () => {
-        if (confirm('Delete this license?')) {
-          licenses = licenses.filter(l => l.id !== btn.dataset.id);
-          saveData(); renderLicenses(); showToast('License deleted');
-        }
-      }));
-
-    updateStats();
-    updateNotifications();
+    document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', () => openEditModal(btn.dataset.id)));
+    document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', () => {
+      if (confirm('Delete this license?')) {
+        licenses = licenses.filter(l => l.id !== btn.dataset.id);
+        saveData(); renderLicenses(); showToast('License deleted');
+      }
+    }));
+    updateStats(); updateNotifications();
   }
+
+  // ---------- Render CALENDAR ----------
+  function renderCalendar() {
+    const year = calDate.getFullYear();
+    const month = calDate.getMonth();
+    
+    calMonthYear.textContent = new Date(year, month).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    
+    let filtered = licenses;
+    if (currentSection !== 'All') filtered = licenses.filter(l => l.type === currentSection);
+    filtered = applyFilters(filtered);
+
+    // Group licenses by expireDate (YYYY-MM-DD)
+    const eventsByDate = {};
+    filtered.forEach(lic => {
+      if (lic.duration !== 'lifetime' && lic.expireDate) {
+        if (!eventsByDate[lic.expireDate]) eventsByDate[lic.expireDate] = [];
+        eventsByDate[lic.expireDate].push(lic);
+      }
+    });
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let html = '';
+    // Empty cells before day 1
+    for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell empty"></div>`;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isToday = today.getTime() === new Date(dateStr).getTime();
+      
+      let eventsHtml = '';
+      if (eventsByDate[dateStr]) {
+        eventsByDate[dateStr].forEach(lic => {
+          const tier = getTierClass(lic);
+          const title = `${lic.name} (${lic.vendor})`;
+          eventsHtml += `<div class="cal-event ${tier}" title="${escapeHtml(title)}" data-id="${lic.id}">${escapeHtml(lic.name)}</div>`;
+        });
+      }
+
+      html += `
+        <div class="cal-cell ${isToday ? 'today' : ''}">
+          <div class="cal-date">${day}</div>
+          <div class="cal-events">${eventsHtml}</div>
+        </div>
+      `;
+    }
+
+    calGrid.innerHTML = `<div class="cal-day-head">Sun</div><div class="cal-day-head">Mon</div><div class="cal-day-head">Tue</div><div class="cal-day-head">Wed</div><div class="cal-day-head">Thu</div><div class="cal-day-head">Fri</div><div class="cal-day-head">Sat</div>` + html;
+    
+    // Add click events to calendar items
+    document.querySelectorAll('.cal-event').forEach(el => {
+      el.addEventListener('click', () => {
+        const lic = licenses.find(l => l.id === el.dataset.id);
+        if (lic) openEditModal(lic.id); // Opens edit modal
+      });
+    });
+  }
+
+  // View toggles
+  viewGridBtn.addEventListener('click', () => {
+    currentView = 'grid';
+    viewGridBtn.classList.add('active');
+    viewCalBtn.classList.remove('active');
+    calendarContainer.hidden = true;
+    licenseGrid.hidden = false;
+    renderLicenses();
+  });
+
+  viewCalBtn.addEventListener('click', () => {
+    currentView = 'calendar';
+    viewCalBtn.classList.add('active');
+    viewGridBtn.classList.remove('active');
+    licenseGrid.hidden = true;
+    calendarContainer.hidden = false;
+    renderCalendar();
+  });
+
+  prevMonthBtn.addEventListener('click', () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); });
+  nextMonthBtn.addEventListener('click', () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); });
 
   // ---------- Modals ----------
   function openAddModal() {
@@ -391,6 +557,11 @@
     licenseForm.reset();
     licenseIdField.value = '';
     licenseTypeSelect.value = currentSection !== 'All' ? currentSection : (getAllTypes()[0] || 'Other');
+    
+    // Populate vendor select before opening
+    populateVendorSelect();
+    if (currentSection === 'All' && vendors.length > 0) vendorSelect.value = vendors[0].name;
+    
     const today = new Date().toISOString().slice(0,10);
     raiseDateInput.value = today;
     startDateInput.value = today;
@@ -409,7 +580,17 @@
     if (!lic) return;
     modalTitle.textContent = 'Edit License';
     licenseIdField.value = lic.id;
-    vendorInput.value = lic.vendor;
+    
+    populateVendorSelect();
+    // If vendor isn't in the list (legacy data), add it temporarily so it shows
+    if (!vendors.some(v => v.name === lic.vendor)) {
+      const opt = document.createElement('option');
+      opt.value = lic.vendor;
+      opt.textContent = lic.vendor + ' (Legacy)';
+      vendorSelect.appendChild(opt);
+    }
+    vendorSelect.value = lic.vendor;
+
     licenseNameInput.value = lic.name;
     licenseTypeSelect.value = lic.type;
     raiseDateInput.value = lic.raiseDate;
@@ -439,7 +620,7 @@
   function handleFormSubmit(e) {
     e.preventDefault();
     const id = licenseIdField.value;
-    const vendor = vendorInput.value.trim();
+    const vendor = vendorSelect.value;
     const name = licenseNameInput.value.trim();
     const type = licenseTypeSelect.value;
     const duration = licenseDurationSelect.value;
@@ -453,7 +634,7 @@
     let expireDate = expireDateInput.value;
 
     if (!vendor || !name || !type || !raiseDate || !startDate) {
-      alert('Please fill all required fields'); return;
+      alert('Please fill all required fields (including Vendor)'); return;
     }
     if (duration !== 'lifetime' && !expireDate) {
       alert('Please provide an expiry date or choose lifetime.'); return;
@@ -473,7 +654,8 @@
 
     saveData();
     closeModal();
-    renderLicenses();
+    if (currentView === 'grid') renderLicenses();
+    else renderCalendar();
     renderTabs();
     showToast(id ? 'License updated' : 'License added');
     checkAndSendAlerts();
@@ -496,7 +678,8 @@
           message: `License: ${lic.name}\nVendor: ${lic.vendor}\nType: ${lic.type}\nQty: ${lic.qty || 1}\nKey: ${lic.licenseKey || 'N/A'}\nAssigned to: ${lic.assignedTo || 'N/A'}\nExpiry: ${formatDate(lic.expireDate)}\nDays remaining: ${diffDays}`,
           license_name: lic.name, vendor: lic.vendor, license_type: lic.type,
           license_qty: lic.qty || 1, license_key: lic.licenseKey || '',
-          assigned_to: lic.assignedTo || '', expiry_date: lic.expireDate, days_left: diffDays
+          assigned_to: lic.assignedTo || '', expiry_date: lic.expireDate, days_left: diffDays,
+          _replyto: "sharan.vasoya@suchisemicon.com" 
         };
         fetch(formspreeEndpoint, {
           method: 'POST',
@@ -552,7 +735,7 @@
   }
 
   function exportJson() {
-    const data = { licenses, customTypes, formspreeEndpoint, exportedAt: new Date().toISOString(), version: 1 };
+    const data = { licenses, vendors, customTypes, formspreeEndpoint, exportedAt: new Date().toISOString(), version: 1 };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     downloadBlob(blob, `licenses-backup-${new Date().toISOString().slice(0,10)}.json`);
     showToast('JSON exported');
@@ -567,10 +750,15 @@
         if (!parsed.licenses || !Array.isArray(parsed.licenses)) throw new Error('Invalid file');
         if (!confirm(`Import ${parsed.licenses.length} licenses? This will ADD to your existing list.`)) return;
         licenses = licenses.concat(parsed.licenses);
+        if (parsed.vendors) {
+           parsed.vendors.forEach(nv => {
+             if (!vendors.some(v => v.name === nv.name)) vendors.push(nv);
+           });
+        }
         if (parsed.customTypes) {
           parsed.customTypes.forEach(t => { if (!customTypes.includes(t)) customTypes.push(t); });
         }
-        saveData(); populateTypeSelect(); renderTabs(); renderLicenses();
+        saveData(); populateTypeSelect(); populateVendorSelect(); renderTabs(); renderLicenses();
         showToast(`Imported ${parsed.licenses.length} licenses`);
       } catch (err) {
         alert('Invalid JSON file: ' + err.message);
@@ -653,6 +841,11 @@
           const name = get('name');
           if (!vendor || !name) continue;
 
+          // Auto-add new vendors from CSV to the Vendor Directory
+          if (!vendors.some(v => v.name.toLowerCase() === vendor.toLowerCase())) {
+             vendors.push({ id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: vendor, email: '', phone: '' });
+          }
+
           const type = get('type') || 'Other';
           if (!getAllTypes().includes(type) && !customTypes.includes(type)) customTypes.push(type);
 
@@ -673,7 +866,7 @@
         if (imported.length === 0) throw new Error('No valid rows found');
         if (!confirm(`Import ${imported.length} licenses from CSV?`)) return;
         licenses = licenses.concat(imported);
-        saveData(); populateTypeSelect(); renderTabs(); renderLicenses();
+        saveData(); populateTypeSelect(); populateVendorSelect(); renderTabs(); renderLicenses();
         showToast(`Imported ${imported.length} licenses from CSV`);
       } catch (err) {
         alert('CSV import failed: ' + err.message);
@@ -682,11 +875,35 @@
     reader.readAsText(file);
   }
 
+  // ---------- Keyboard Shortcuts ----------
+  document.addEventListener('keydown', (e) => {
+    // Ignore if user is typing in an input/select/textarea
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+      if (e.key === 'Escape') document.activeElement.blur();
+      return;
+    }
+
+    if (e.key === '/') {
+      e.preventDefault();
+      searchInput.focus();
+    } else if (e.key.toLowerCase() === 'n') {
+      e.preventDefault();
+      openAddModal();
+    } else if (e.key === 'Escape') {
+      closeModal();
+      closeSettings();
+      vendorModal.classList.remove('open');
+      notifPanel.classList.remove('open');
+      dataPanel.classList.remove('open');
+    }
+  });
+
   // ---------- Init ----------
   function init() {
     loadData();
     initTheme();
     populateTypeSelect();
+    populateVendorSelect(); // Init Vendors
     renderTabs();
     renderLicenses();
     if (formspreeEndpoint) formspreeInput.value = formspreeEndpoint;
@@ -698,27 +915,42 @@
     licenseDurationSelect.addEventListener('change', recalcExpiry);
     startDateInput.addEventListener('change', recalcExpiry);
     themeToggle.addEventListener('click', toggleTheme);
+    
+    // Vendor Events
+    vendorBtn.addEventListener('click', () => { renderVendors(); vendorModal.classList.add('open'); });
+    closeVendorBtn.addEventListener('click', () => vendorModal.classList.remove('open'));
+    cancelVendorBtn.addEventListener('click', () => vendorModal.classList.remove('open'));
+    vendorForm.addEventListener('submit', handleVendorSubmit);
+    quickAddVendorBtn.addEventListener('click', () => { renderVendors(); vendorModal.classList.add('open'); });
+
     settingsBtn.addEventListener('click', openSettings);
     closeSettingsBtn.addEventListener('click', closeSettings);
     cancelSettingsBtn.addEventListener('click', closeSettings);
     saveSettingsBtn.addEventListener('click', saveSettings);
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) closeSettings(); });
+    vendorModal.addEventListener('click', (e) => { if (e.target === vendorModal) vendorModal.classList.remove('open'); });
 
     // Search & filters
     searchInput.addEventListener('input', () => {
       searchQuery = searchInput.value.trim();
       searchClear.hidden = !searchQuery;
-      renderLicenses();
+      if (currentView === 'grid') renderLicenses();
+      else renderCalendar();
     });
     searchClear.addEventListener('click', () => {
-      searchInput.value = ''; searchQuery = ''; searchClear.hidden = true; renderLicenses();
+      searchInput.value = ''; searchQuery = ''; searchClear.hidden = true;
+      if (currentView === 'grid') renderLicenses();
+      else renderCalendar();
     });
     statusFilterSelect.addEventListener('change', () => {
-      statusFilter = statusFilterSelect.value; renderLicenses();
+      statusFilter = statusFilterSelect.value;
+      if (currentView === 'grid') renderLicenses();
+      else renderCalendar();
     });
     sortSelect.addEventListener('change', () => {
-      sortMode = sortSelect.value; renderLicenses();
+      sortMode = sortSelect.value;
+      if (currentView === 'grid') renderLicenses(); // sort only applies to grid
     });
 
     // Notifications bell

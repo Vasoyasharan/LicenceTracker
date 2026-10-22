@@ -35,18 +35,12 @@
                                 <stop offset="55%" stop-color="#8b5cf6" />
                                 <stop offset="100%" stop-color="#ec4899" />
                             </linearGradient>
-                            <linearGradient id="shineGrad" x1="0" y1="0" x2="1" y2="0">
-                                <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
-                                <stop offset="50%" stop-color="#ffffff" stop-opacity="0.7" />
-                                <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
-                            </linearGradient>
                         </defs>
                         <circle cx="16" cy="16" r="9" fill="none" stroke="url(#keyGrad)" stroke-width="4" />
                         <path d="M22 22 L40 40" stroke="url(#keyGrad)" stroke-width="4" stroke-linecap="round" />
                         <path d="M33 33 L37 29" stroke="url(#keyGrad)" stroke-width="4" stroke-linecap="round" />
                         <path d="M37 37 L41 33" stroke="url(#keyGrad)" stroke-width="4" stroke-linecap="round" />
                         <circle cx="16" cy="16" r="3" fill="url(#keyGrad)" />
-                        <rect x="0" y="0" width="48" height="48" fill="url(#shineGrad)" opacity="0.15" />
                     </svg>
                 </div>
                 <div class="logo-text">
@@ -85,11 +79,11 @@
                     </div>
                 </div>
 
+                <button class="theme-toggle" id="vendorBtn" title="Manage Vendors">
+                    <i class="fas fa-address-book"></i> <span>Vendors</span>
+                </button>
                 <button class="theme-toggle" id="themeToggle" title="Switch theme">
                     <i class="fas fa-moon"></i> <span>Theme</span>
-                </button>
-                <button class="btn btn-outline btn-small" id="settingsBtn">
-                    <i class="fas fa-envelope"></i> Formspree
                 </button>
                 <button class="btn btn-primary" id="addLicenseBtn">
                     <i class="fas fa-plus"></i> Add License
@@ -129,11 +123,11 @@
             </div>
         </div>
 
-        <!-- Search & Filter bar -->
+        <!-- Toolbar -->
         <div class="toolbar">
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Search vendor, license, key, assignee…">
+                <input type="text" id="searchInput" placeholder="Search vendor, license, key, assignee… (Press '/')">
                 <button class="search-clear" id="searchClear" hidden aria-label="Clear"><i
                         class="fas fa-times"></i></button>
             </div>
@@ -153,11 +147,38 @@
                     <option value="name-asc">License: A–Z</option>
                     <option value="recent">Recently added</option>
                 </select>
+
+                <!-- View Toggle -->
+                <div class="view-toggle">
+                    <button class="view-btn active" id="viewGridBtn" title="Grid View"><i
+                            class="fas fa-th-large"></i></button>
+                    <button class="view-btn" id="viewCalBtn" title="Calendar View"><i
+                            class="fas fa-calendar-alt"></i></button>
+                </div>
             </div>
         </div>
 
         <!-- Section tabs -->
         <div class="tabs-container" id="tabsContainer"></div>
+
+        <!-- Calendar Container (hidden by default) -->
+        <div class="calendar-container" id="calendarContainer" hidden>
+            <div class="cal-header">
+                <button class="icon-btn" id="prevMonthBtn"><i class="fas fa-chevron-left"></i></button>
+                <h2 id="calMonthYear">Month Year</h2>
+                <button class="icon-btn" id="nextMonthBtn"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="cal-grid">
+                <div class="cal-day-head">Sun</div>
+                <div class="cal-day-head">Mon</div>
+                <div class="cal-day-head">Tue</div>
+                <div class="cal-day-head">Wed</div>
+                <div class="cal-day-head">Thu</div>
+                <div class="cal-day-head">Fri</div>
+                <div class="cal-day-head">Sat</div>
+                <!-- Calendar cells injected by JS -->
+            </div>
+        </div>
 
         <!-- License grid -->
         <div class="license-grid" id="licenseGrid"></div>
@@ -173,10 +194,18 @@
             <form id="licenseForm">
                 <input type="hidden" id="licenseId" value="">
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label>Vendor name</label>
-                        <input type="text" id="vendorName" placeholder="e.g. Autodesk" required>
+
+                    <!-- VENDOR SELECT (New) -->
+                    <div class="form-group full-width" style="flex-direction: row; gap: 1rem; align-items: flex-end;">
+                        <div style="flex: 1;">
+                            <label>Vendor</label>
+                            <select id="vendorSelect" required></select>
+                        </div>
+                        <button type="button" class="btn btn-outline" id="quickAddVendorBtn" title="Add New Vendor">
+                            <i class="fas fa-plus"></i> New
+                        </button>
                     </div>
+
                     <div class="form-group">
                         <label>License name</label>
                         <input type="text" id="licenseName" placeholder="e.g. AutoCAD 2025" required>
@@ -225,7 +254,7 @@
                     </div>
                     <div class="form-group">
                         <label>License key / serial</label>
-                        <input type="text" id="licenseKey" placeholder="2201-EB07-0000-0100-A191-E8D7-ADxx-xxxx">
+                        <input type="text" id="licenseKey" placeholder="2201-EB07-...">
                     </div>
                     <div class="form-group">
                         <label>Assigned to (person)</label>
@@ -245,6 +274,45 @@
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save License</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Vendor Directory Modal -->
+    <div class="modal-overlay" id="vendorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Vendor Directory</h2>
+                <button class="icon-btn" id="closeVendorBtn" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+
+            <form id="vendorForm" class="vendor-add-form">
+                <input type="hidden" id="vendorId" value="">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Vendor Name</label>
+                        <input type="text" id="vendorNameInput" placeholder="e.g. Autodesk" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Contact Email</label>
+                        <input type="email" id="vendorEmailInput" placeholder="support@autodesk.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Contact Number</label>
+                        <input type="text" id="vendorPhoneInput" placeholder="+1 800 123 4567">
+                    </div>
+                    <div class="form-group" style="justify-content: flex-end;">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Vendor</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="vendor-list" id="vendorList">
+                <!-- Vendors injected by JS -->
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" id="cancelVendorBtn">Close</button>
+            </div>
         </div>
     </div>
 
