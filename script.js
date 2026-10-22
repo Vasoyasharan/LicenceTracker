@@ -9,7 +9,7 @@
   let sortMode = 'expiry-asc';
 
   const DEFAULT_TYPES = [
-    'AutoCAD', 'Antivirus', 'Email', 'Office Apps',
+    'AutoCAD License', 'Antivirus EPP', 'Email', 'Office Apps',
     'Server OS', 'Win 11 Pro', 'Other'
   ];
 

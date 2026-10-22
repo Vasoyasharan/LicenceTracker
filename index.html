@@ -88,9 +88,6 @@
                 <button class="theme-toggle" id="themeToggle" title="Switch theme">
                     <i class="fas fa-moon"></i> <span>Theme</span>
                 </button>
-                <button class="theme-toggle" id="shortcutsBtn" title="Keyboard shortcuts">
-                    <i class="fas fa-keyboard"></i> <span>Shortcuts</span>
-                </button>
                 <button class="btn btn-outline btn-small" id="settingsBtn">
                     <i class="fas fa-envelope"></i> Formspree
                 </button>
@@ -147,7 +144,6 @@
                     <option value="expired">Expired</option>
                     <option value="active">Active (>20d)</option>
                     <option value="lifetime">Lifetime</option>
-                    <option value="archived">Archived</option>
                 </select>
                 <select id="sortSelect" class="filter-select">
                     <option value="expiry-asc">Expiry: soonest first</option>
@@ -160,38 +156,11 @@
             </div>
         </div>
 
-        <div class="view-toolbar" role="tablist" aria-label="License views">
-            <button class="view-option active" data-view="list" role="tab" aria-selected="true"><i class="fas fa-table-cells-large"></i> List</button>
-            <button class="view-option" data-view="calendar" role="tab" aria-selected="false"><i class="fas fa-calendar-days"></i> Calendar</button>
-            <button class="view-option" data-view="analytics" role="tab" aria-selected="false"><i class="fas fa-chart-column"></i> Analytics</button>
-        </div>
-
         <!-- Section tabs -->
         <div class="tabs-container" id="tabsContainer"></div>
 
         <!-- License grid -->
         <div class="license-grid" id="licenseGrid"></div>
-        <section class="calendar-view" id="calendarView" hidden>
-            <div class="view-heading">
-                <button class="icon-btn" id="calendarPrev" title="Previous month" aria-label="Previous month"><i class="fas fa-chevron-left"></i></button>
-                <h2 id="calendarTitle"></h2>
-                <button class="icon-btn" id="calendarNext" title="Next month" aria-label="Next month"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="calendar-grid" id="calendarGrid"></div>
-        </section>
-        <section class="analytics-view" id="analyticsView" hidden>
-            <div class="analytics-summary" id="analyticsSummary"></div>
-            <div class="analytics-panels">
-                <section class="analytics-panel">
-                    <h2>License status</h2>
-                    <div id="statusChart" class="bar-chart"></div>
-                </section>
-                <section class="analytics-panel">
-                    <h2>Annual cost by type</h2>
-                    <div id="costChart" class="bar-chart"></div>
-                </section>
-            </div>
-        </section>
     </div>
 
     <!-- Add / Edit License Modal -->
@@ -255,10 +224,6 @@
                         <input type="number" id="licenseQty" min="1" step="1" value="1" placeholder="e.g. 25">
                     </div>
                     <div class="form-group">
-                        <label>Annual cost (USD)</label>
-                        <input type="number" id="annualCost" min="0" step="0.01" value="0" placeholder="e.g. 1200">
-                    </div>
-                    <div class="form-group">
                         <label>License key / serial</label>
                         <input type="text" id="licenseKey" placeholder="2201-EB07-0000-0100-A191-E8D7-ADxx-xxxx">
                     </div>
@@ -280,21 +245,6 @@
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save License</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="shortcutsModal">
-        <div class="modal-content shortcuts-content">
-            <div class="modal-header">
-                <h2>Keyboard shortcuts</h2>
-                <button class="icon-btn" id="closeShortcutsBtn" aria-label="Close"><i class="fas fa-times"></i></button>
-            </div>
-            <dl class="shortcut-list">
-                <div><dt><kbd>N</kbd></dt><dd>Add a license</dd></div>
-                <div><dt><kbd>/</kbd></dt><dd>Focus search</dd></div>
-                <div><dt><kbd>Esc</kbd></dt><dd>Close the open dialog or menu</dd></div>
-                <div><dt><kbd>?</kbd></dt><dd>Show keyboard shortcuts</dd></div>
-            </dl>
         </div>
     </div>
 
