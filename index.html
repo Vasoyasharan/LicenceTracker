@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Tracker · Expiry Alerts</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="bg-blobs" aria-hidden="true">
+        <span class="blob blob-1"></span>
+        <span class="blob blob-2"></span>
+        <span class="blob blob-3"></span>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <div class="logo-mark">
+                    <svg viewBox="0 0 48 48" width="42" height="42" xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true">
+                        <defs>
+                            <linearGradient id="keyGrad" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#6366f1" />
+                                <stop offset="55%" stop-color="#8b5cf6" />
+                                <stop offset="100%" stop-color="#ec4899" />
+                            </linearGradient>
+                            <linearGradient id="shineGrad" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+                                <stop offset="50%" stop-color="#ffffff" stop-opacity="0.7" />
+                                <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="16" cy="16" r="9" fill="none" stroke="url(#keyGrad)" stroke-width="4" />
+                        <path d="M22 22 L40 40" stroke="url(#keyGrad)" stroke-width="4" stroke-linecap="round" />
+                        <path d="M33 33 L37 29" stroke="url(#keyGrad)" stroke-width="4" stroke-linecap="round" />
+                        <path d="M37 37 L41 33" stroke="url(#keyGrad)" stroke-width="4" stroke-linecap="round" />
+                        <circle cx="16" cy="16" r="3" fill="url(#keyGrad)" />
+                        <rect x="0" y="0" width="48" height="48" fill="url(#shineGrad)" opacity="0.15" />
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-name">License<span class="accent">Tracker</span></span>
+                    <span class="logo-tag">Never miss an expiry</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <!-- Notifications bell -->
+                <div class="notif-wrapper">
+                    <button class="notif-btn" id="notifBtn" title="Alerts">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-count" id="notifCount" hidden>0</span>
+                    </button>
+                    <div class="notif-panel" id="notifPanel">
+                        <div class="notif-head">Expiry Alerts</div>
+                        <div class="notif-list" id="notifList"></div>
+                    </div>
+                </div>
+
+                <!-- Data menu -->
+                <div class="data-menu-wrapper">
+                    <button class="theme-toggle" id="dataMenuBtn" title="Import / Export">
+                        <i class="fas fa-database"></i> <span>Data</span>
+                    </button>
+                    <div class="data-panel" id="dataPanel">
+                        <button class="data-item" id="exportJsonBtn"><i class="fas fa-file-export"></i> Export
+                            JSON</button>
+                        <button class="data-item" id="importJsonBtn"><i class="fas fa-file-import"></i> Import
+                            JSON</button>
+                        <button class="data-item" id="exportCsvBtn"><i class="fas fa-file-csv"></i> Export CSV</button>
+                        <button class="data-item" id="importCsvBtn"><i class="fas fa-table"></i> Import CSV
+                            (bulk)</button>
+                        <button class="data-item" id="printBtn"><i class="fas fa-print"></i> Print Report</button>
+                    </div>
+                </div>
+
+                <button class="theme-toggle" id="themeToggle" title="Switch theme">
+                    <i class="fas fa-moon"></i> <span>Theme</span>
+                </button>
+                <button class="btn btn-outline btn-small" id="settingsBtn">
+                    <i class="fas fa-envelope"></i> Formspree
+                </button>
+                <button class="btn btn-primary" id="addLicenseBtn">
+                    <i class="fas fa-plus"></i> Add License
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats strip -->
+        <div class="stats-strip" id="statsStrip">
+            <div class="stat-card">
+                <div class="stat-icon total"><i class="fas fa-layer-group"></i></div>
+                <div class="stat-body">
+                    <span class="stat-value" id="statTotal">0</span>
+                    <span class="stat-label">Total licenses</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon soon"><i class="fas fa-hourglass-half"></i></div>
+                <div class="stat-body">
+                    <span class="stat-value" id="statSoon">0</span>
+                    <span class="stat-label">Expiring soon</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon expired"><i class="fas fa-triangle-exclamation"></i></div>
+                <div class="stat-body">
+                    <span class="stat-value" id="statExpired">0</span>
+                    <span class="stat-label">Expired</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon life"><i class="fas fa-infinity"></i></div>
+                <div class="stat-body">
+                    <span class="stat-value" id="statLifetime">0</span>
+                    <span class="stat-label">Lifetime</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search & Filter bar -->
+        <div class="toolbar">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search vendor, license, key, assignee…">
+                <button class="search-clear" id="searchClear" hidden aria-label="Clear"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="filter-group">
+                <select id="statusFilter" class="filter-select">
+                    <option value="all">All statuses</option>
+                    <option value="expiring">Expiring soon (≤20d)</option>
+                    <option value="expired">Expired</option>
+                    <option value="active">Active (>20d)</option>
+                    <option value="lifetime">Lifetime</option>
+                </select>
+                <select id="sortSelect" class="filter-select">
+                    <option value="expiry-asc">Expiry: soonest first</option>
+                    <option value="expiry-desc">Expiry: furthest first</option>
+                    <option value="vendor-asc">Vendor: A–Z</option>
+                    <option value="vendor-desc">Vendor: Z–A</option>
+                    <option value="name-asc">License: A–Z</option>
+                    <option value="recent">Recently added</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Section tabs -->
+        <div class="tabs-container" id="tabsContainer"></div>
+
+        <!-- License grid -->
+        <div class="license-grid" id="licenseGrid"></div>
+    </div>
+
+    <!-- Add / Edit License Modal -->
+    <div class="modal-overlay" id="licenseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add License</h2>
+                <button class="icon-btn" id="closeModalBtn" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="licenseForm">
+                <input type="hidden" id="licenseId" value="">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Vendor name</label>
+                        <input type="text" id="vendorName" placeholder="e.g. Autodesk" required>
+                    </div>
+                    <div class="form-group">
+                        <label>License name</label>
+                        <input type="text" id="licenseName" placeholder="e.g. AutoCAD 2025" required>
+                    </div>
+                    <div class="form-group">
+                        <label>License type</label>
+                        <select id="licenseType" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>License duration</label>
+                        <select id="licenseDuration">
+                            <option value="lifetime">Lifetime (no expiry)</option>
+                            <option value="1">1 month</option>
+                            <option value="2">2 months</option>
+                            <option value="3">3 months</option>
+                            <option value="4">4 months</option>
+                            <option value="5">5 months</option>
+                            <option value="6">6 months</option>
+                            <option value="7">7 months</option>
+                            <option value="8">8 months</option>
+                            <option value="9">9 months</option>
+                            <option value="10">10 months</option>
+                            <option value="11">11 months</option>
+                            <option value="12" selected>12 months (1 year)</option>
+                            <option value="24">24 months (2 years)</option>
+                            <option value="36">36 months (3 years)</option>
+                            <option value="custom">Custom / Manual expiry</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Purchase / raise date</label>
+                        <input type="date" id="raiseDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Start date</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Expiry date</label>
+                        <input type="date" id="expireDate">
+                        <small class="hint" id="expiryHint">Auto-calculated from start date + duration</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="licenseQty" min="1" step="1" value="1" placeholder="e.g. 25">
+                    </div>
+                    <div class="form-group">
+                        <label>License key / serial</label>
+                        <input type="text" id="licenseKey" placeholder="2201-EB07-0000-0100-A191-E8D7-ADxx-xxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>Assigned to (person)</label>
+                        <input type="text" id="assignedTo" placeholder="e.g. Mr. Thavathason">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>File / Invoice URL (optional)</label>
+                        <input type="url" id="fileUrl" placeholder="https://drive.google.com/...">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Notes (optional)</label>
+                        <input type="text" id="notes" placeholder="Seats, department, etc.">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="cancelModalBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save License</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Formspree Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Formspree Email Alerts</h2>
+                <button class="icon-btn" id="closeSettingsBtn" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="settings-text">
+                Alerts fire at <strong>20, 15, 10, and 5 days</strong> before expiry. Lifetime licenses are skipped.
+            </p>
+            <div class="form-group full-width">
+                <label>Formspree endpoint URL</label>
+                <input type="url" id="formspreeEndpoint" placeholder="https://formspree.io/f/xxxxxx">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" id="cancelSettingsBtn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file inputs for import -->
+    <input type="file" id="jsonFileInput" accept=".json,application/json" hidden>
+    <input type="file" id="csvFileInput" accept=".csv,text/csv" hidden>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i> <span id="toastMessage"></span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
