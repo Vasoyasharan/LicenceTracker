@@ -1,100 +1,146 @@
-# 🔑 LicenseTracker
+# LicenseTracker
 
-A modern, fully responsive, client-side web application to track software licenses, keys, and expiry dates. Built with pure HTML, CSS, and Vanilla JavaScript — **no backend required**. Perfect for hosting on GitHub Pages.
+LicenseTracker is a responsive, client-side web app for tracking software licenses, product keys, renewal dates, vendors, and renewal alerts. It is designed for IT admins, procurement teams, and small businesses that want a lightweight way to manage license inventory without a backend or database.
+
+Built with plain HTML, CSS, and JavaScript, the app runs entirely in the browser and stores data locally in `localStorage`.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
 
----
+## Features
 
-## ✨ Features
+- Track software licenses by vendor, product name, type, start date, expiry date, and quantity
+- Support both lifetime and time-based licenses
+- Auto-calculate expiry from a chosen duration or allow manual expiry dates
+- Create and manage custom license types and vendor records
+- Assign licenses to users or departments
+- Save product keys, notes, and file attachments via URL
+- See instant urgency states:
+  - Green: active
+  - Yellow: expiring soon
+  - Orange: critical window
+  - Red: expired or within the final warning period
+- Focus on expiring licenses with a notifications panel and live stats summary
+- Browse licenses in grid view or calendar view
+- Search, filter, and sort the license list by status, vendor, name, or date
+- Export data as JSON or CSV, and import data back in bulk
+- Print a clean report for audits, procurement reviews, or paper records
+- Toggle between light and dark themes
+- Configure multiple Formspree alert endpoints and enable/disable them individually
+- Renew a license directly from the UI by extending the current expiry date
+- Keyboard shortcuts for quick actions (search, add license, close dialogs)
 
-- **Multi-Category Tracking:** Pre-defined tabs for AutoCAD, Antivirus, Office Apps, Server OS, etc. You can also add your own custom categories.
-- **Lifetime & Timed Licenses:** Supports both lifetime licenses (no expiry) and timed licenses.
-- **Auto-Calculate Expiry:** Select a duration (e.g., 12 months) and the app automatically calculates the expiry date based on the start date. Manual override is also available.
-- **Bulk Quantity Tracking:** Record how many seats/keys you bought at once (e.g., `× 130`).
-- **Key Assignment:** Store the actual license key/serial and assign it to a specific person (e.g., `Mr. Thavathason`).
-- **Attachments:** Add a URL link (Google Drive, OneDrive, etc.) to the invoice or license file.
-- **Visual Urgency Tiers:** Cards get a colored left border based on urgency:
-  - 🟢 Active (> 60 days)
-  - 🟡 Watch (21–60 days)
-  - 🟠 Alert (6–20 days)
-  - 🔴 Critical (≤ 5 days or Expired)
-- **Smart Dashboard & Notifications:** Animated stats strip (Total, Expiring, Expired, Lifetime) and a notification bell showing upcoming expiries.
-- **Search, Filter & Sort:** Instantly search across all fields, filter by status, and sort by expiry date or vendor.
-- **Data Portability:** 
-  - Export/Import JSON (for backups and moving between devices).
-  - Export to CSV (opens in Excel).
-  - Bulk Import from CSV.
-- **Print Report:** One-click print mode designed for paper/PDF reports.
-- **Dark/Light Mode:** Seamless theme switching with local storage memory.
-- **Fully Responsive:** Looks great on desktops, tablets, and mobile phones.
+## Project structure
 
----
+```text
+.
+├── index.html       # App layout and modal structure
+├── style.css        # UI styling, responsive layout, themes, and cards
+├── script.js        # License logic, rendering, storage, import/export, notifications, alerts
+└── README.md        # Project documentation
+```
 
-## 🚀 How to Deploy (GitHub Pages)
+## How it works
 
-Since this is a pure static site, it takes less than 2 minutes to go live:
+The application stores all data in the browser's `localStorage` under a single key named `licenseTracker`. This means:
 
-1. Create a new repository on GitHub (e.g., `license-tracker`).
-2. Upload the 3 files to the root of the repository:
-   - `index.html`
-   - `style.css`
-   - `script.js`
-   - `README.md` (this file)
-3. Go to your repository **Settings** > **Pages**.
-4. Under **Build and deployment**, set the source to **Deploy from a branch**.
-5. Select the `main` (or `master`) branch and the `/root` folder, then click **Save**.
-6. Wait a minute, and your site will be live at `https://<your-username>.github.io/license-tracker/`.
+- no server is required
+- no database setup is required
+- the app works well for local personal use and GitHub Pages hosting
+- browser cache clearing may remove saved data, so backups are recommended
 
----
+The app reads saved licenses, vendors, custom types, and Formspree endpoint settings when loading and writes back automatically after changes.
 
-## 📧 Email Alerts (Formspree)
+## Quick start
 
-The app includes built-in logic to send email alerts via **Formspree** exactly **20, 15, 10, and 5 days** before a license expires.
+### Run locally
 
-### How to set it up:
-1. Go to [Formspree.io](https://formspree.io/) and create a free account.
-2. Create a new form. You will get an Endpoint URL (e.g., `https://formspree.io/f/xxxxxx`).
-3. Open your deployed LicenseTracker.
-4. Click the **"Formspree"** button in the top right header.
-5. Paste your Formspree URL and click **Save Settings**.
+1. Clone this repository.
+2. Open `index.html` in a browser.
+3. Start adding licenses.
 
-### ⚠️ Important Note on Automation
-Because this app is purely client-side (no backend), the email alert triggers **only when the webpage is open** in a browser tab. If the site is closed, no emails will be sent. 
+### Deploy to GitHub Pages
 
-*(We are working on a Batch 3 update to add a GitHub Actions or Google Apps Script integration for 100% background automation!)*
+1. Push the project to a GitHub repository.
+2. Open the repository in GitHub.
+3. Go to Settings > Pages.
+4. Set the source to your default branch and the root folder.
+5. Save the settings.
+6. GitHub will give you a URL similar to:
+   `https://<your-username>.github.io/<repository-name>/`
 
----
+## Data management
 
-## 💾 Data Storage
+### Export and import
 
-All data is stored securely and locally in your browser's **`localStorage`**. 
-- **No data is sent to any server** (except the Formspree payload when an alert fires).
-- Because it's stored in your browser, clearing your cache/cookies will delete your data. 
-- **Highly Recommended:** Use the **Data > Export JSON** button every week to keep a safe backup on your computer.
+From the Data menu, you can:
 
----
+- Export JSON backup files
+- Import JSON backup files
+- Export CSV files for spreadsheet use
+- Import CSV files in bulk
+- Print a report
 
-## 🗺️ Roadmap / Upcoming Features
+This makes the app useful for backup, migration, or team handoff workflows.
 
-- [x] Batch 1: JSON/CSV Export & Import, Search, Filters, Sorting, Urgency Tiers, Notification Bell, File URLs.
-- [ ] **Batch 2 (Next):** Calendar View, Keyboard Shortcuts, Analytics Dashboard (Chart.js), Cost Tracking, Renew/Archive Workflow.
-- [ ] **Batch 3:** Multi-User Sync (JSONBin), PWA support (installable app, offline mode), fully automated background emails.
+### CSV import format
 
----
+The CSV importer expects common column names such as:
 
-## 🛠️ Built With
+- Vendor
+- License Name
+- Type
+- Duration
+- Qty
+- Raise Date
+- Start Date
+- Expire Date
+- License Key
+- Assigned To
+- Notes
+- File URL
 
-- **HTML5** & **Vanilla JavaScript (ES6)**
-- **CSS3** (Custom Properties, Flexbox, CSS Grid, Backdrop-filter)
-- **FontAwesome** (Icons)
-- **Google Fonts** (Inter & JetBrains Mono)
+The importer is flexible and matches common header variations, but vendor and license name columns are required.
 
----
+## Email alerts setup
 
-## 📝 License
+The app includes support for Formspree-based alerts. Alerts can be configured to send reminder emails when a license is close to expiry.
 
-This project is open-source and available under the [MIT License](https://opensource.org/licenses/MIT). Feel free to fork it, modify it, and use it for your company!
+### Setup
+
+1. Create a Formspree account and a form.
+2. Copy the form endpoint URL, for example:
+   `https://formspree.io/f/xxxxxx`
+3. Open the app and click the Alerts button.
+4. Add the recipient name and endpoint URL.
+5. Enable the endpoint if needed.
+
+The app is built to trigger reminder checks while the page is open in the browser. Since it is fully client-side, it does not run background jobs when the browser is closed.
+
+## Keyboard shortcuts
+
+- `/` — focus the search box
+- `N` — open the add-license modal
+- `Esc` — close open dialogs and panels
+
+## Customization
+
+You can customize the app by:
+
+- adding new license categories
+- adding vendor records
+- editing default expiry and duration logic in `script.js`
+- updating colors, spacing, and layout in `style.css`
+- changing the app title or branding in `index.html`
+
+## Notes
+
+- This project intentionally avoids a backend to keep setup simple and hosting cheap.
+- The design is optimized for personal or small-team tracking rather than multi-user collaboration.
+- Because data is stored in the browser, regular JSON exports are recommended as a safety measure.
+
+## License
+
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
