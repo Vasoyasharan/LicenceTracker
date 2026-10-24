@@ -1,5 +1,5 @@
 /* ============================================================
-   License Tracker — Modern UI (Light + Dark, animated, responsive)
+   License Tracker — Modern UI
    ============================================================ */
 
 *,
@@ -125,7 +125,7 @@ header {
 .btn-outline { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); box-shadow: var(--shadow-sm); }
 .btn-outline:hover { background: var(--surface-2); transform: translateY(-2px); }
 .btn-small { padding: 0.55rem 1rem; font-size: 0.82rem; }
-.btn-danger { background: var(--danger); color: white; }
+.btn-danger { background: var(--danger); color: white; box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35); }
 
 /* ---------- Toggles ---------- */
 .theme-toggle { background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-pill); padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text); transition: all 0.25s var(--ease); font-family: inherit; }
@@ -238,6 +238,8 @@ body.dark .qty-badge { background: #1e1b4b; color: #a5b4fc; }
 .icon-btn { background: transparent; border: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; cursor: pointer; color: var(--text-muted); transition: all 0.2s var(--ease); font-size: 0.85rem; }
 .icon-btn:hover { background: var(--primary-soft); color: var(--primary); transform: scale(1.08); }
 .icon-btn.delete:hover { background: var(--danger-soft); color: var(--danger); }
+.icon-btn.renew-btn { color: var(--warning); background: var(--warning-soft); width: auto; padding: 0 0.7rem; border-radius: var(--radius-pill); font-size: 0.75rem; font-weight: 700; gap: 0.3rem; }
+.icon-btn.renew-btn:hover { background: var(--warning); color: white; }
 
 /* ---------- Calendar View ---------- */
 .calendar-container { background: var(--surface); border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 1.5rem; margin-bottom: 2rem; animation: fadeUp 0.4s var(--ease) both; }
@@ -255,14 +257,22 @@ body.dark .qty-badge { background: #1e1b4b; color: #a5b4fc; }
 .cal-event.tier-orange { background: var(--warning-soft); color: var(--warning); border-left-color: var(--warning); }
 .cal-event.tier-green { background: var(--success-soft); color: var(--success); border-left-color: var(--success); }
 
-/* ---------- Vendor Directory ---------- */
+/* ---------- Vendor & Settings Directory ---------- */
 .vendor-add-form { background: var(--surface-2); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 1px solid var(--border); }
 .vendor-list { display: flex; flex-direction: column; gap: 0.75rem; max-height: 300px; overflow-y: auto; margin-bottom: 1rem; }
 .vendor-card { display: flex; justify-content: space-between; align-items: center; padding: 0.9rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
 .vendor-info h4 { font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 0.2rem; }
 .vendor-info p { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem; margin-top: 0.15rem; }
 .vendor-info i { width: 1rem; opacity: 0.7; }
-.vendor-actions { display: flex; gap: 0.4rem; }
+.vendor-actions { display: flex; gap: 0.4rem; align-items: center; }
+
+/* Toggle Switch */
+.switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-strong); transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--success); }
+input:checked + .slider:before { transform: translateX(14px); }
 
 /* ---------- Modal & Forms ---------- */
 .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }

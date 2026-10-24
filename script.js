@@ -1,17 +1,20 @@
 (function () {
   // ---------- State ----------
   let licenses = [];
-  let vendors = []; // NEW: Vendor directory
+  let vendors = []; 
+  let formspreeEndpoints = [
+    { id: 'default', name: 'My Alerts', url: 'https://formspree.io/f/mqppzwwv', enabled: true }
+  ];
   let currentSection = 'All';
   let customTypes = [];
-  let formspreeEndpoint = '';
   let searchQuery = '';
   let statusFilter = 'all';
   let sortMode = 'expiry-asc';
   
   // Calendar State
-  let currentView = 'grid'; // 'grid' or 'calendar'
+  let currentView = 'grid';
   let calDate = new Date();
+  let renewingLicenseId = null;
 
   const DEFAULT_TYPES = [
     'AutoCAD License', 'Antivirus EPP', 'Email', 'Office Apps',
@@ -36,8 +39,8 @@
   const licenseForm = $('licenseForm');
   const licenseIdField = $('licenseId');
   
-  const vendorSelect = $('vendorSelect'); // New
-  const quickAddVendorBtn = $('quickAddVendorBtn'); // New
+  const vendorSelect = $('vendorSelect');
+  const quickAddVendorBtn = $('quickAddVendorBtn');
   const licenseNameInput = $('licenseName');
   const licenseTypeSelect = $('licenseType');
   const licenseDurationSelect = $('licenseDuration');
@@ -62,19 +65,27 @@
   const closeVendorBtn = $('closeVendorBtn');
   const cancelVendorBtn = $('cancelVendorBtn');
   const vendorForm = $('vendorForm');
-  const vendorIdField = $('vendorId');
   const vendorNameInput = $('vendorNameInput');
   const vendorEmailInput = $('vendorEmailInput');
   const vendorPhoneInput = $('vendorPhoneInput');
   const vendorList = $('vendorList');
 
-  // Settings Modal DOM
+  // Settings (Formspree) Modal DOM
   const settingsBtn = $('settingsBtn');
   const settingsModal = $('settingsModal');
   const closeSettingsBtn = $('closeSettingsBtn');
   const cancelSettingsBtn = $('cancelSettingsBtn');
-  const saveSettingsBtn = $('saveSettingsBtn');
-  const formspreeInput = $('formspreeEndpoint');
+  const formspreeList = $('formspreeList');
+  const formspreeForm = $('formspreeForm');
+  const newEndpointName = $('newEndpointName');
+  const newEndpointUrl = $('newEndpointUrl');
+
+  // Renew Modal DOM
+  const renewModal = $('renewModal');
+  const closeRenewBtn = $('closeRenewBtn');
+  const cancelRenewBtn = $('cancelRenewBtn');
+  const confirmRenewBtn = $('confirmRenewBtn');
+  const renewDurationSelect = $('renewDurationSelect');
   
   const toast = $('toast');
   const toastMessage = $('toastMessage');
@@ -107,12 +118,17 @@
         licenses = parsed.licenses || [];
         vendors = parsed.vendors || [];
         customTypes = parsed.customTypes || [];
-        formspreeEndpoint = parsed.formspreeEndpoint || '';
+        if (parsed.formspreeEndpoints) {
+          formspreeEndpoints = parsed.formspreeEndpoints;
+        } else if (parsed.formspreeEndpoint) {
+          // Migrate old single endpoint
+          formspreeEndpoints = [{ id: 'legacy', name: 'Legacy Alert', url: parsed.formspreeEndpoint, enabled: true }];
+        }
       } catch (e) { console.warn('Failed to parse stored data', e); }
     }
   }
   function saveData() {
-    localStorage.setItem('licenseTracker', JSON.stringify({ licenses, vendors, customTypes, formspreeEndpoint }));
+    localStorage.setItem('licenseTracker', JSON.stringify({ licenses, vendors, customTypes, formspreeEndpoints }));
   }
 
   // ---------- Helpers ----------
@@ -205,7 +221,7 @@
 
     document.querySelectorAll('.delete-vendor-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (confirm('Delete this vendor? Licenses using this vendor name will remain, but the contact info will be lost.')) {
+        if (confirm('Delete this vendor? Licenses using this vendor name will remain, but contact info will be lost.')) {
           vendors = vendors.filter(v => v.id !== btn.dataset.id);
           saveData();
           renderVendors();
@@ -235,8 +251,60 @@
     vendorForm.reset();
     renderVendors();
     populateVendorSelect();
-    vendorSelect.value = name; // Auto-select the new vendor
+    vendorSelect.value = name;
     showToast('Vendor added successfully');
+  }
+
+  // ---------- FORMSPREE SETTINGS ----------
+  function renderFormspreeEndpoints() {
+    if (formspreeEndpoints.length === 0) {
+      formspreeList.innerHTML = `<div class="notif-empty">No endpoints configured.</div>`;
+      return;
+    }
+    formspreeList.innerHTML = formspreeEndpoints.map(ep => `
+      <div class="vendor-card">
+        <div class="vendor-info">
+          <h4>${escapeHtml(ep.name)} ${ep.enabled ? '' : '(Disabled)'}</h4>
+          <p><i class="fas fa-link"></i> ${escapeHtml(ep.url)}</p>
+        </div>
+        <div class="vendor-actions">
+          <label class="switch" title="Enable/Disable">
+            <input type="checkbox" class="toggle-endpoint" data-id="${ep.id}" ${ep.enabled ? 'checked' : ''}>
+            <span class="slider"></span>
+          </label>
+          <button class="icon-btn delete-endpoint-btn" data-id="${ep.id}" title="Delete"><i class="fas fa-trash-alt"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    document.querySelectorAll('.toggle-endpoint').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const ep = formspreeEndpoints.find(x => x.id === e.target.dataset.id);
+        if (ep) { ep.enabled = e.target.checked; saveData(); renderFormspreeEndpoints(); }
+      });
+    });
+
+    document.querySelectorAll('.delete-endpoint-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (confirm('Delete this alert endpoint?')) {
+          formspreeEndpoints = formspreeEndpoints.filter(x => x.id !== btn.dataset.id);
+          saveData(); renderFormspreeEndpoints(); showToast('Endpoint deleted');
+        }
+      });
+    });
+  }
+
+  function handleFormspreeSubmit(e) {
+    e.preventDefault();
+    const name = newEndpointName.value.trim();
+    const url = newEndpointUrl.value.trim();
+    if (!name || !url) return;
+    
+    formspreeEndpoints.push({ id: Date.now().toString(36), name, url, enabled: true });
+    saveData();
+    formspreeForm.reset();
+    renderFormspreeEndpoints();
+    showToast('Alert endpoint added');
   }
 
   // ---------- Tabs ----------
@@ -430,6 +498,10 @@
 
       const qty = lic.qty && lic.qty > 1 ? `<span class="qty-badge"><i class="fas fa-boxes-stacked"></i> × ${lic.qty}</span>` : '';
       const attach = lic.fileUrl ? `<a class="attach-chip" href="${escapeHtml(lic.fileUrl)}" target="_blank" rel="noopener"><i class="fas fa-paperclip"></i> File</a>` : '';
+      
+      // Show renew button if <= 10 days or expired
+      const showRenewBtn = !isLifetime && (daysLeft <= 10);
+      const renewBtnHtml = showRenewBtn ? `<button class="icon-btn renew-btn" data-id="${lic.id}" title="Renew License"><i class="fas fa-sync"></i> Renew</button>` : '';
 
       html += `
         <div class="license-card ${tierClass}" data-id="${lic.id}">
@@ -451,6 +523,7 @@
             ${attach ? `<div class="meta-item">${attach}</div>` : ''}
           </div>
           <div class="card-actions">
+            ${renewBtnHtml}
             <button class="icon-btn edit-btn" data-id="${lic.id}" title="Edit"><i class="fas fa-edit"></i></button>
             <button class="icon-btn delete delete-btn" data-id="${lic.id}" title="Delete"><i class="fas fa-trash-alt"></i></button>
           </div>
@@ -465,8 +538,39 @@
         saveData(); renderLicenses(); showToast('License deleted');
       }
     }));
+    document.querySelectorAll('.renew-btn').forEach(btn => btn.addEventListener('click', () => openRenewModal(btn.dataset.id)));
+    
     updateStats(); updateNotifications();
   }
+
+  // ---------- Renew Workflow ----------
+  function openRenewModal(id) {
+    renewingLicenseId = id;
+    renewModal.classList.add('open');
+  }
+
+  confirmRenewBtn.addEventListener('click', () => {
+    if (!renewingLicenseId) return;
+    const months = parseInt(renewDurationSelect.value, 10);
+    const lic = licenses.find(l => l.id === renewingLicenseId);
+    
+    if (lic) {
+      // Calculate from EXISTING expireDate, not today
+      const baseDate = lic.expireDate || new Date().toISOString().slice(0,10);
+      lic.expireDate = addMonths(baseDate, months);
+      
+      // Save
+      saveData();
+      renderLicenses();
+      showToast(`Renewed until ${formatDate(lic.expireDate)}`);
+    }
+    
+    renewModal.classList.remove('open');
+    renewingLicenseId = null;
+  });
+
+  closeRenewBtn.addEventListener('click', () => { renewModal.classList.remove('open'); renewingLicenseId = null; });
+  cancelRenewBtn.addEventListener('click', () => { renewModal.classList.remove('open'); renewingLicenseId = null; });
 
   // ---------- Render CALENDAR ----------
   function renderCalendar() {
@@ -479,7 +583,6 @@
     if (currentSection !== 'All') filtered = licenses.filter(l => l.type === currentSection);
     filtered = applyFilters(filtered);
 
-    // Group licenses by expireDate (YYYY-MM-DD)
     const eventsByDate = {};
     filtered.forEach(lic => {
       if (lic.duration !== 'lifetime' && lic.expireDate) {
@@ -494,7 +597,6 @@
     today.setHours(0,0,0,0);
 
     let html = '';
-    // Empty cells before day 1
     for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell empty"></div>`;
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -520,11 +622,10 @@
 
     calGrid.innerHTML = `<div class="cal-day-head">Sun</div><div class="cal-day-head">Mon</div><div class="cal-day-head">Tue</div><div class="cal-day-head">Wed</div><div class="cal-day-head">Thu</div><div class="cal-day-head">Fri</div><div class="cal-day-head">Sat</div>` + html;
     
-    // Add click events to calendar items
     document.querySelectorAll('.cal-event').forEach(el => {
       el.addEventListener('click', () => {
         const lic = licenses.find(l => l.id === el.dataset.id);
-        if (lic) openEditModal(lic.id); // Opens edit modal
+        if (lic) openEditModal(lic.id);
       });
     });
   }
@@ -558,7 +659,6 @@
     licenseIdField.value = '';
     licenseTypeSelect.value = currentSection !== 'All' ? currentSection : (getAllTypes()[0] || 'Other');
     
-    // Populate vendor select before opening
     populateVendorSelect();
     if (currentSection === 'All' && vendors.length > 0) vendorSelect.value = vendors[0].name;
     
@@ -582,7 +682,6 @@
     licenseIdField.value = lic.id;
     
     populateVendorSelect();
-    // If vendor isn't in the list (legacy data), add it temporarily so it shows
     if (!vendors.some(v => v.name === lic.vendor)) {
       const opt = document.createElement('option');
       opt.value = lic.vendor;
@@ -663,16 +762,22 @@
 
   // ---------- Email alerts ----------
   function checkAndSendAlerts() {
-    if (!formspreeEndpoint) return;
+    // Filter only enabled endpoints
+    const activeEndpoints = formspreeEndpoints.filter(ep => ep.enabled && ep.url);
+    if (activeEndpoints.length === 0) return;
+
     const today = new Date(); today.setHours(0,0,0,0);
     const thresholds = [20, 15, 10, 5];
+    
     licenses.forEach(lic => {
       if (lic.duration === 'lifetime') return;
       const expireDate = new Date(lic.expireDate); expireDate.setHours(0,0,0,0);
       const diffDays = Math.ceil((expireDate - today) / 86400000);
+      
       if (thresholds.includes(diffDays) && diffDays >= 0) {
         const key = `alert_${lic.id}_${diffDays}_${today.toISOString().slice(0,10)}`;
         if (localStorage.getItem(key)) return;
+        
         const payload = {
           subject: `License expiry alert: ${lic.name} (${diffDays} days left)`,
           message: `License: ${lic.name}\nVendor: ${lic.vendor}\nType: ${lic.type}\nQty: ${lic.qty || 1}\nKey: ${lic.licenseKey || 'N/A'}\nAssigned to: ${lic.assignedTo || 'N/A'}\nExpiry: ${formatDate(lic.expireDate)}\nDays remaining: ${diffDays}`,
@@ -681,24 +786,29 @@
           assigned_to: lic.assignedTo || '', expiry_date: lic.expireDate, days_left: diffDays,
           _replyto: "sharan.vasoya@suchisemicon.com" 
         };
-        fetch(formspreeEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify(payload)
-        }).then(r => { if (r.ok) localStorage.setItem(key, 'true'); })
-          .catch(err => console.warn('Formspree error', err));
+        
+        // Send to all active endpoints
+        let success = false;
+        let pending = activeEndpoints.length;
+        
+        activeEndpoints.forEach(ep => {
+          fetch(ep.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(payload)
+          }).then(r => {
+            if (r.ok) success = true;
+            pending--;
+            if (pending === 0 && success) {
+              localStorage.setItem(key, 'true');
+            }
+          }).catch(err => {
+            console.warn('Formspree error for', ep.name, err);
+            pending--;
+          });
+        });
       }
     });
-  }
-
-  // ---------- Settings ----------
-  function openSettings() { formspreeInput.value = formspreeEndpoint; settingsModal.classList.add('open'); }
-  function closeSettings() { settingsModal.classList.remove('open'); }
-  function saveSettings() {
-    const url = formspreeInput.value.trim();
-    if (url && !url.startsWith('https://')) { alert('Please enter a valid Formspree URL'); return; }
-    formspreeEndpoint = url; saveData(); closeSettings();
-    showToast('Formspree endpoint saved'); checkAndSendAlerts();
   }
 
   // ---------- Toast ----------
@@ -735,7 +845,7 @@
   }
 
   function exportJson() {
-    const data = { licenses, vendors, customTypes, formspreeEndpoint, exportedAt: new Date().toISOString(), version: 1 };
+    const data = { licenses, vendors, formspreeEndpoints, customTypes, exportedAt: new Date().toISOString(), version: 1 };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     downloadBlob(blob, `licenses-backup-${new Date().toISOString().slice(0,10)}.json`);
     showToast('JSON exported');
@@ -755,10 +865,15 @@
              if (!vendors.some(v => v.name === nv.name)) vendors.push(nv);
            });
         }
+        if (parsed.formspreeEndpoints) {
+           parsed.formspreeEndpoints.forEach(ne => {
+             if (!formspreeEndpoints.some(e => e.url === ne.url)) formspreeEndpoints.push(ne);
+           });
+        }
         if (parsed.customTypes) {
           parsed.customTypes.forEach(t => { if (!customTypes.includes(t)) customTypes.push(t); });
         }
-        saveData(); populateTypeSelect(); populateVendorSelect(); renderTabs(); renderLicenses();
+        saveData(); populateTypeSelect(); populateVendorSelect(); renderTabs(); renderLicenses(); renderFormspreeEndpoints();
         showToast(`Imported ${parsed.licenses.length} licenses`);
       } catch (err) {
         alert('Invalid JSON file: ' + err.message);
@@ -841,7 +956,6 @@
           const name = get('name');
           if (!vendor || !name) continue;
 
-          // Auto-add new vendors from CSV to the Vendor Directory
           if (!vendors.some(v => v.name.toLowerCase() === vendor.toLowerCase())) {
              vendors.push({ id: Date.now().toString(36) + Math.random().toString(36).substr(2), name: vendor, email: '', phone: '' });
           }
@@ -877,7 +991,6 @@
 
   // ---------- Keyboard Shortcuts ----------
   document.addEventListener('keydown', (e) => {
-    // Ignore if user is typing in an input/select/textarea
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
       if (e.key === 'Escape') document.activeElement.blur();
       return;
@@ -891,8 +1004,9 @@
       openAddModal();
     } else if (e.key === 'Escape') {
       closeModal();
-      closeSettings();
+      settingsModal.classList.remove('open');
       vendorModal.classList.remove('open');
+      renewModal.classList.remove('open');
       notifPanel.classList.remove('open');
       dataPanel.classList.remove('open');
     }
@@ -903,10 +1017,12 @@
     loadData();
     initTheme();
     populateTypeSelect();
-    populateVendorSelect(); // Init Vendors
+    populateVendorSelect();
     renderTabs();
     renderLicenses();
-    if (formspreeEndpoint) formspreeInput.value = formspreeEndpoint;
+    
+    // Render Settings Lists
+    renderFormspreeEndpoints();
 
     addLicenseBtn.addEventListener('click', openAddModal);
     closeModalBtn.addEventListener('click', closeModal);
@@ -923,13 +1039,16 @@
     vendorForm.addEventListener('submit', handleVendorSubmit);
     quickAddVendorBtn.addEventListener('click', () => { renderVendors(); vendorModal.classList.add('open'); });
 
-    settingsBtn.addEventListener('click', openSettings);
-    closeSettingsBtn.addEventListener('click', closeSettings);
-    cancelSettingsBtn.addEventListener('click', closeSettings);
-    saveSettingsBtn.addEventListener('click', saveSettings);
+    // Settings (Formspree) Events
+    settingsBtn.addEventListener('click', () => { renderFormspreeEndpoints(); settingsModal.classList.add('open'); });
+    closeSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('open'));
+    cancelSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('open'));
+    formspreeForm.addEventListener('submit', handleFormspreeSubmit);
+
     modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-    settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) closeSettings(); });
+    settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) settingsModal.classList.remove('open'); });
     vendorModal.addEventListener('click', (e) => { if (e.target === vendorModal) vendorModal.classList.remove('open'); });
+    renewModal.addEventListener('click', (e) => { if (e.target === renewModal) { renewModal.classList.remove('open'); renewingLicenseId = null; } });
 
     // Search & filters
     searchInput.addEventListener('input', () => {
@@ -950,7 +1069,7 @@
     });
     sortSelect.addEventListener('change', () => {
       sortMode = sortSelect.value;
-      if (currentView === 'grid') renderLicenses(); // sort only applies to grid
+      if (currentView === 'grid') renderLicenses();
     });
 
     // Notifications bell
