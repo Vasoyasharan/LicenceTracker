@@ -126,14 +126,33 @@
         <button class="search-clear" id="searchClear" hidden aria-label="Clear"><i class="fas fa-times"></i></button>
       </div>
       <div class="filter-group">
-        <select id="statusFilter" class="filter-select">
+        <select id="statusFilter" class="filter-select" aria-label="Status filter">
           <option value="all">All statuses</option>
           <option value="expiring">Expiring soon (≤20d)</option>
           <option value="expired">Expired</option>
           <option value="active">Active (>20d)</option>
           <option value="lifetime">Lifetime</option>
         </select>
-        <select id="sortSelect" class="filter-select">
+        <select id="durationFilter" class="filter-select" aria-label="License duration filter">
+          <option value="all">All durations</option>
+          <option value="lifetime">Lifetime</option>
+          <option value="custom">Custom / manual</option>
+          <option value="1">1 month</option>
+          <option value="2">2 months</option>
+          <option value="3">3 months</option>
+          <option value="4">4 months</option>
+          <option value="5">5 months</option>
+          <option value="6">6 months</option>
+          <option value="7">7 months</option>
+          <option value="8">8 months</option>
+          <option value="9">9 months</option>
+          <option value="10">10 months</option>
+          <option value="11">11 months</option>
+          <option value="12">12 months (1 year)</option>
+          <option value="24">24 months (2 years)</option>
+          <option value="36">36 months (3 years)</option>
+        </select>
+        <select id="sortSelect" class="filter-select" aria-label="Sort licenses">
           <option value="expiry-asc">Expiry: soonest first</option>
           <option value="expiry-desc">Expiry: furthest first</option>
           <option value="vendor-asc">Vendor: A–Z</option>
@@ -191,7 +210,7 @@
           <div class="form-group full-width" style="flex-direction: row; gap: 1rem; align-items: flex-end;">
             <div style="flex: 1;">
               <label>Vendor</label>
-              <select id="vendorSelect" required></select>
+              <select id="vendorSelect" aria-label="Vendor" required></select>
             </div>
             <button type="button" class="btn btn-outline" id="quickAddVendorBtn" title="Add New Vendor">
               <i class="fas fa-plus"></i> New

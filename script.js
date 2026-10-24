@@ -9,6 +9,7 @@
   let customTypes = [];
   let searchQuery = '';
   let statusFilter = 'all';
+  let durationFilter = 'all';
   let sortMode = 'expiry-asc';
   
   // Calendar State
@@ -92,6 +93,7 @@
   const searchInput = $('searchInput');
   const searchClear = $('searchClear');
   const statusFilterSelect = $('statusFilter');
+  const durationFilterSelect = $('durationFilter');
   const sortSelect = $('sortSelect');
   
   const notifBtn = $('notifBtn');
@@ -151,6 +153,171 @@
   function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div'); div.textContent = text; return div.innerHTML;
+  }
+  function enhanceSelect(select) {
+    if (select.dataset.enhanced === 'true') return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `custom-select ${select.classList.contains('filter-select') ? 'custom-select-filter' : ''}`;
+    const label = select.getAttribute('aria-label') ||
+      select.parentElement.querySelector('label')?.textContent.trim() ||
+      select.closest('.form-group')?.querySelector('label')?.textContent.trim() ||
+      select.id.replace(/([A-Z])/g, ' $1');
+    const required = select.required;
+    select.required = false;
+    select.classList.add('select-native-hidden');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    select.dataset.enhanced = 'true';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger';
+    trigger.setAttribute('aria-label', label);
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-controls', `${select.id}-options`);
+    wrapper.appendChild(trigger);
+
+    const menu = document.createElement('div');
+    menu.className = 'custom-select-menu';
+    menu.id = `${select.id}-options`;
+    menu.setAttribute('role', 'listbox');
+    menu.setAttribute('aria-label', label);
+    wrapper.appendChild(menu);
+
+    function closeMenu(returnFocus = false) {
+      wrapper.classList.remove('is-open', 'is-up');
+      trigger.setAttribute('aria-expanded', 'false');
+      if (returnFocus) trigger.focus();
+    }
+
+    function openMenu() {
+      document.querySelectorAll('.custom-select.is-open').forEach(open => {
+        open.classList.remove('is-open', 'is-up');
+        open.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false');
+      });
+      const spaceBelow = window.innerHeight - trigger.getBoundingClientRect().bottom;
+      const estimatedMenuHeight = Math.min(menu.scrollHeight || 280, 280);
+      wrapper.classList.toggle('is-up', spaceBelow < estimatedMenuHeight && trigger.getBoundingClientRect().top > spaceBelow);
+      wrapper.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      const selected = menu.querySelector('[aria-selected="true"]:not(:disabled)');
+      (selected || menu.querySelector('.custom-select-option:not(:disabled)'))?.focus();
+    }
+
+    function refreshOptions() {
+      const selectedOption = select.selectedOptions[0];
+      trigger.disabled = select.disabled;
+      if (select.value) trigger.removeAttribute('aria-invalid');
+      trigger.replaceChildren();
+      const selectedLabel = document.createElement('span');
+      selectedLabel.className = 'custom-select-value';
+      selectedLabel.textContent = selectedOption?.textContent.trim() || '';
+      const chevron = document.createElement('i');
+      chevron.className = 'fas fa-chevron-down custom-select-chevron';
+      chevron.setAttribute('aria-hidden', 'true');
+      trigger.append(selectedLabel, chevron);
+
+      menu.replaceChildren();
+      Array.from(select.options).forEach(option => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'custom-select-option';
+        item.tabIndex = -1;
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', String(option === selectedOption));
+        item.disabled = option.disabled;
+        item.dataset.value = option.value;
+        const text = document.createElement('span');
+        text.textContent = option.textContent.trim();
+        item.appendChild(text);
+        if (option === selectedOption) {
+          const check = document.createElement('i');
+          check.className = 'fas fa-check';
+          check.setAttribute('aria-hidden', 'true');
+          item.appendChild(check);
+        }
+        menu.appendChild(item);
+      });
+    }
+
+    trigger.addEventListener('click', () => {
+      if (wrapper.classList.contains('is-open')) closeMenu();
+      else openMenu();
+    });
+    menu.addEventListener('click', event => {
+      const option = event.target.closest('.custom-select-option');
+      if (!option || option.disabled) return;
+      select.value = option.dataset.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      closeMenu(true);
+    });
+    trigger.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        openMenu();
+      }
+    });
+    menu.addEventListener('keydown', event => {
+      const options = Array.from(menu.querySelectorAll('.custom-select-option:not(:disabled)'));
+      const currentIndex = options.indexOf(document.activeElement);
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % options.length;
+      else if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + options.length) % options.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = options.length - 1;
+      else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMenu(true);
+        return;
+      } else if (event.key === 'Tab') {
+        closeMenu();
+        return;
+      } else return;
+      event.preventDefault();
+      options[nextIndex]?.focus();
+    });
+    select.addEventListener('change', refreshOptions);
+    select.addEventListener('input', refreshOptions);
+    select.form?.addEventListener('reset', () => requestAnimationFrame(refreshOptions));
+    if (required) {
+      select.dataset.customRequired = 'true';
+      if (select.form && !select.form.dataset.customSelectValidation) {
+        select.form.dataset.customSelectValidation = 'true';
+        select.form.addEventListener('submit', event => {
+          const invalidSelects = Array.from(select.form.querySelectorAll('.select-native-hidden[data-custom-required="true"]'))
+            .filter(requiredSelect => !requiredSelect.value);
+          select.form.querySelectorAll('.select-native-hidden[data-custom-required="true"]').forEach(requiredSelect => {
+            const requiredTrigger = requiredSelect.parentElement.querySelector('.custom-select-trigger');
+            if (requiredSelect.value) requiredTrigger?.removeAttribute('aria-invalid');
+            else requiredTrigger?.setAttribute('aria-invalid', 'true');
+          });
+          if (invalidSelects.length) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            invalidSelects[0].parentElement.querySelector('.custom-select-trigger')?.focus();
+          }
+        }, true);
+      }
+      trigger.addEventListener('click', () => trigger.removeAttribute('aria-invalid'));
+    }
+    new MutationObserver(refreshOptions).observe(select, { childList: true, subtree: true, attributes: true });
+    refreshOptions();
+  }
+
+  function initCustomSelects() {
+    document.querySelectorAll('select').forEach(enhanceSelect);
+    document.addEventListener('click', event => {
+      if (!event.target.closest('.custom-select')) {
+        document.querySelectorAll('.custom-select.is-open').forEach(wrapper => {
+          wrapper.classList.remove('is-open', 'is-up');
+          wrapper.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false');
+        });
+      }
+    });
   }
   function getTierClass(lic) {
     if (lic.duration === 'lifetime') return 'tier-life';
@@ -420,6 +587,9 @@
   // ---------- Filtering & sorting ----------
   function applyFilters(list) {
     let out = list;
+    if (durationFilter !== 'all') {
+      out = out.filter(l => String(l.duration || '12') === durationFilter);
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       out = out.filter(l =>
@@ -1018,6 +1188,7 @@
     initTheme();
     populateTypeSelect();
     populateVendorSelect();
+    initCustomSelects();
     renderTabs();
     renderLicenses();
     
@@ -1064,6 +1235,11 @@
     });
     statusFilterSelect.addEventListener('change', () => {
       statusFilter = statusFilterSelect.value;
+      if (currentView === 'grid') renderLicenses();
+      else renderCalendar();
+    });
+    durationFilterSelect.addEventListener('change', () => {
+      durationFilter = durationFilterSelect.value;
       if (currentView === 'grid') renderLicenses();
       else renderCalendar();
     });
